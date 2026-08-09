@@ -62,6 +62,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "src/controllers/boost/boostController.h"
 #include "src/controllers/aircon/airconController.h"
 #include "src/controllers/nitrous/nitrousController.h"
+#include "src/controllers/starter/starterController.h"
 
 #define CRANK_RUN_HYSTER    15
 
@@ -283,6 +284,9 @@ BEGIN_LTO_ALWAYS_INLINE(void) loop(void)
       
       // Air conditioning control
       airConControl();
+
+      // Push-to-start starter control
+      starterControl();
 
       #if defined(NATIVE_CAN_AVAILABLE)
       sendCANBroadcast(10);

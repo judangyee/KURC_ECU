@@ -107,6 +107,28 @@ CBR300R 순정 크랭크/캠 센서의 정확한 릴럭턴트 이빨 수 / 결�
 - `speeduino/idle.cpp` — 아이들 제어
 - `speeduino/src/controllers/aircon/`, `nitrous/`, `tsCommand/`
 
+## 신규 추가: 푸시-투-스타트(스타터 버튼) 컨트롤
+
+stock Speeduino에는 없던 기능이라 새로 구현했다. `speeduino/src/controllers/starter/`.
+
+- 버튼을 짧게 눌렀다 떼도(rising edge) 스타터 릴레이 출력이 래치(latch)되어 유지된다.
+- `currentStatus.rotationStatus`가 `Running`으로 바뀌면(엔진 시동 성공) 자동으로 릴레이를 끈다 —
+  기존 크랭킹 RPM 임계값(`configPage4.crankRPM`)을 그대로 재사용하므로 별도 RPM 설정을 추가하지 않았다.
+- `configPage15.starterMaxCrankTime`(0.1초 단위) 시간을 넘기면 안전상 자동으로 끈다 (시동이 안 걸릴 때 스타터 모터 보호).
+- 크랭킹 도중 버튼을 다시 누르면 수동 취소된다.
+
+TunerStudio에서 `&Accessories → Push Button Start` 메뉴로 활성화/핀/극성/최대 크랭킹 시간을 설정한다.
+`reference/speeduino.ini`의 config15 페이지 106~108바이트에 필드를 추가했다 (기존 예약 공간을 사용해
+페이지 전체 크기(256바이트)는 그대로 유지됨).
+
+**빌드 검증**: PlatformIO의 패키지 레지스트리(platformio.org)는 이 세션 네트워크 정책상 막혀 있어
+`pio run`은 사용하지 못했다. 대신 `apt`로 `gcc-avr`/`avr-libc`/`arduino-core-avr`를 설치하고,
+`platformio.ini`의 `env:megaatmega2560` 빌드 플래그를 그대로 재현해 전체 소스(92개 파일, 신규
+`starterController` 포함)를 수동으로 컴파일·링크했다. 에러 없이 `firmware.elf`가 생성됨을 확인했다
+(text 260400B / data 384B / bss 6365B, Mega2560 256KB 플래시 예산 내). 다만 PlatformIO가 쓰는
+정확한 링커 스크립트/최적화 플래그와는 완전히 동일하지 않으므로, 실제 보드에 플래싱하기 전에는
+가능하면 `pio run -e megaatmega2560`으로 한 번 더 확인하는 것을 권장한다.
+
 ## 다음 단계
 
 1. CBR300R 크랭크/캠 센서 트리거 데이터 확보 (서비스 매뉴얼 또는 실측)
