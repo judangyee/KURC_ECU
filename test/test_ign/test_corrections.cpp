@@ -491,59 +491,6 @@ static void test_correctionSoftRevLimit(void) {
     RUN_TEST_P(test_correctionSoftRevLimit_timeout);
 }
 
-extern int8_t correctionNitrous(int8_t advance);
-
-static void test_correctionNitrous_disabled(void) {
-    configPage10.n2o_enable = 0;
-    TEST_ASSERT_EQUAL(13, correctionNitrous(13));
-    TEST_ASSERT_EQUAL(-13, correctionNitrous(-13));
-}
-
-static void test_correctionNitrous_stage1(void) {
-    configPage10.n2o_enable = 1;
-    configPage10.n2o_stage1_retard = 5;
-    configPage10.n2o_stage2_retard = 0;
-    
-    currentStatus.nitrous_status = NITROUS_STAGE1;
-    TEST_ASSERT_EQUAL(8, correctionNitrous(13));
-    TEST_ASSERT_EQUAL(-18, correctionNitrous(-13));
-    
-    currentStatus.nitrous_status = NITROUS_BOTH;
-    TEST_ASSERT_EQUAL(8, correctionNitrous(13));
-    TEST_ASSERT_EQUAL(-18, correctionNitrous(-13));
-}
-
-static void test_correctionNitrous_stage2(void) {
-    configPage10.n2o_enable = 1;
-    configPage10.n2o_stage1_retard = 0;
-    configPage10.n2o_stage2_retard = 5;
-    
-    currentStatus.nitrous_status = NITROUS_STAGE2;
-    TEST_ASSERT_EQUAL(8, correctionNitrous(13));
-    TEST_ASSERT_EQUAL(-18, correctionNitrous(-13));
-    
-    currentStatus.nitrous_status = NITROUS_BOTH;
-    TEST_ASSERT_EQUAL(8, correctionNitrous(13));
-    TEST_ASSERT_EQUAL(-18, correctionNitrous(-13));
-}
-
-static void test_correctionNitrous_stageboth(void) {
-    configPage10.n2o_enable = 1;
-    configPage10.n2o_stage1_retard = 3;
-    configPage10.n2o_stage2_retard = 5;
-      
-    currentStatus.nitrous_status = NITROUS_BOTH;
-    TEST_ASSERT_EQUAL(5, correctionNitrous(13));
-    TEST_ASSERT_EQUAL(-21, correctionNitrous(-13));
-}
-
-static void test_correctionNitrous(void) {
-    RUN_TEST_P(test_correctionNitrous_disabled);
-    RUN_TEST_P(test_correctionNitrous_stage1);
-    RUN_TEST_P(test_correctionNitrous_stage2);
-    RUN_TEST_P(test_correctionNitrous_stageboth);
-}
-
 extern int8_t correctionSoftLaunch(int8_t advance);
 
 static void setup_correctionSoftLaunch(void) {
@@ -823,14 +770,6 @@ static void test_correctionsDwell_nopertooth(void) {
 
     configPage4.sparkMode = IGN_MODE_SINGLE;
     TEST_ASSERT_EQUAL(74, correctionsDwell(800));
-
-    configPage4.sparkMode = IGN_MODE_ROTARY;
-    configPage10.rotaryType = ROTARY_IGN_RX8;
-    TEST_ASSERT_EQUAL(296, correctionsDwell(800));
-
-    configPage4.sparkMode = IGN_MODE_ROTARY;
-    configPage10.rotaryType = ROTARY_IGN_FC;
-    TEST_ASSERT_EQUAL(74, correctionsDwell(800));
 }
 
 static void test_correctionsDwell_pertooth(void) {
@@ -900,7 +839,6 @@ void testIgnCorrections(void) {
         test_correctionIATretard();
         test_correctionIdleAdvance();
         test_correctionSoftRevLimit();
-        test_correctionNitrous();
         test_correctionSoftLaunch();
         test_correctionSoftFlatShift();
         test_correctionKnock();

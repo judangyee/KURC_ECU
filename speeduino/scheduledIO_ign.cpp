@@ -90,11 +90,6 @@ void endCoil7Charge(void) { endCoilCharge(7U); }
 void beginCoil8Charge(void) { beginCoilCharge(8U); }
 void endCoil8Charge(void) { endCoilCharge(8U); }
 
-//The below 3 calls are all part of the rotary ignition mode
-void beginTrailingCoilCharge(void) { beginCoilCharge(2U); }
-void endTrailingCoilCharge1(void) { endCoilCharge(2U); beginCoilCharge(3U); } //Sets ign3 (Trailing select) high
-void endTrailingCoilCharge2(void) { endCoilCharge(2U); endCoilCharge(3U); } //sets ign3 (Trailing select) low
-
 //As above but for ignition (Wasted COP mode)
 void beginCoil1and3Charge(void) { beginCoilCharge(1U); beginCoilCharge(3U); }
 void endCoil1and3Charge(void)   { endCoilCharge(1U);  endCoilCharge(3U); }

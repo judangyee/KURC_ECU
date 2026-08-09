@@ -21,40 +21,6 @@ TESTABLE_INLINE_STATIC uint16_t calculateRequiredFuel(const config2 &page2, cons
   return reqFuel;
 }
 
-static inline uint8_t calcNitrousStagePercent(uint8_t minRPMDiv100, uint8_t maxRPMDiv100, const statuses &current) {
-  uint16_t minRPM = minRPMDiv100*UINT16_C(100);
-  uint16_t maxRPM = maxRPMDiv100*UINT16_C(100);
-  uint16_t rpmRange = maxRPM - minRPM;
-  auto adderPercent = (uint8_t)fast_div32_16((current.RPM - minRPM) * UINT32_C(100), rpmRange); //The percentage of the way through the RPM range
-  return 100U - adderPercent; //Flip the percentage as we go from a higher adder to a lower adder as the RPMs rise
-}
-
-static inline uint16_t calcNitrousStagePulseWidth(uint8_t minRPMDiv100, uint8_t maxRPMDiv100, uint8_t adderMinDiv100, uint8_t adderMaxDiv100, const statuses &current)
-{
-  uint16_t adderMin = adderMinDiv100 * UINT16_C(100);
-  uint16_t adderMax = adderMaxDiv100 * UINT16_C(100);
-  uint16_t adderRange = adderMin - adderMax;
-  return adderMax + percentageApprox(calcNitrousStagePercent(minRPMDiv100, maxRPMDiv100, current), adderRange); //Calculate the above percentage of the calculated ms value.
-}
-
-//Manual adder for nitrous. These are not in correctionsFuel() because they are direct adders to the ms value, not % based
-TESTABLE_INLINE_STATIC uint16_t pwApplyNitrous(uint16_t pw, const config10 &page10, const statuses &current)
-{
-  if (current.nitrous_status!=NITROUS_OFF && pw!=0U)
-  {
-    if( (current.nitrous_status == NITROUS_STAGE1) || (current.nitrous_status == NITROUS_BOTH) )
-    {
-      pw = pw + calcNitrousStagePulseWidth(page10.n2o_stage1_minRPM, page10.n2o_stage1_maxRPM, page10.n2o_stage1_adderMin, page10.n2o_stage1_adderMax, current);
-    }
-    if( (current.nitrous_status == NITROUS_STAGE2) || (current.nitrous_status == NITROUS_BOTH) )
-    {
-      pw = pw + calcNitrousStagePulseWidth(page10.n2o_stage2_minRPM, page10.n2o_stage2_maxRPM, page10.n2o_stage2_adderMin, page10.n2o_stage2_adderMax, current);
-    }
-  }
-
-  return pw;
-}
-
 TESTABLE_INLINE_STATIC uint16_t calculatePWLimit(const config2 &page2, const statuses &current)
 {
   uint32_t tempLimit = percentageApprox(page2.dutyLim, current.revolutionTime); //The pulsewidth limit is determined to be the duty cycle limit (Eg 85%) by the total time it takes to perform 1 revolution
@@ -153,89 +119,26 @@ TESTABLE_INLINE_STATIC uint16_t calcPrimaryPulseWidth(uint16_t injOpenTime, cons
       REQ_FUEL, page2, current);
 
   // Make sure this won't overflow when we convert to uInt. This means the maximum pulsewidth possible is 65.535mS
-  return pwApplyNitrous((uint16_t)min(intermediate, (uint32_t)UINT16_MAX), page10, current);
+  return (uint16_t)min(intermediate, (uint32_t)UINT16_MAX);
 }
 
-// Apply the pwLimit if staging is disabled and engine is not cranking
+// Apply the pwLimit when the engine is not cranking
 TESTABLE_INLINE_STATIC uint16_t applyPwLimits(uint16_t pw, uint16_t pwLimit, const config10 &page10, const statuses &current) {
-  if( (current.rotationStatus!=EngineRotationStatus::Cranking) && (page10.stagingEnabled == false) ) { 
+  (void)page10; //Staged injection was removed from this fork; kept as a parameter for call-site/test compatibility
+  if(current.rotationStatus!=EngineRotationStatus::Cranking) {
     return min(pw, pwLimit);
   }
   return pw;
 }
 
-static inline bool canApplyStaging(const config2 &page2, const config10 &page10) {
-    //To run staged injection, the number of cylinders must be less than the injector channels (ie Assuming you're running paired injection, you need at least as many injector channels as you have cylinders, half for the primaries and half for the secondaries)
- return  (page10.stagingEnabled == true) 
-      && (page2.nCylinders <= (uint8_t)INJ_CHANNELS || page2.injType == INJ_TYPE_TBODY); //Final check is to ensure that DFCO isn't active, which would cause an overflow below (See #267)  
-}
-
-static inline uint32_t calcTotalStagePw(uint16_t primaryPW, uint16_t injOpenTime, const config10 &page10) {
-  // Subtract the opening time from PW1 as it needs to be multiplied out again by the pri/sec req_fuel values below. 
-  // It is added on again after that calculation. 
-  primaryPW = primaryPW - injOpenTime;
-  uint32_t totalInjector = page10.stagedInjSizePri + page10.stagedInjSizeSec;
-  return ((uint32_t)primaryPW)*totalInjector;
-}
-
-static inline uint32_t calcStagePrimaryPw(uint32_t totalPw, const config10 &page10) noexcept {
-  return fast_div(totalPw, page10.stagedInjSizePri);
-}
-static inline uint32_t calcStageSecondaryPw(uint32_t totalPw, const config10 &page10) noexcept {
-  return fast_div(totalPw, page10.stagedInjSizeSec);
-}
-
-static inline pulseWidths applyStagingModeTable(uint16_t primaryPW, uint16_t injOpenTime, const config10 &page10, const statuses &current) {
-  uint32_t totalPw = calcTotalStagePw(primaryPW, injOpenTime, page10);
-  //Subtract the opening time from PW1 as it needs to be multiplied out again by the pri/sec req_fuel values below. It is added on again after that calculation. 
-  uint32_t pwPrimaryStaged = calcStagePrimaryPw(totalPw, page10);
-
-  uint8_t stagingSplit = get3DTableValue(&stagingTable, current.fuelLoad, current.RPM);
-  if(stagingSplit > 0U) 
-  { 
-    uint32_t pwSecondaryStaged = calcStageSecondaryPw(totalPw, page10);
-    uint32_t primary = percentageApprox((uint8_t)(100U - stagingSplit), pwPrimaryStaged) + injOpenTime;
-    uint32_t secondary = percentageApprox(stagingSplit, pwSecondaryStaged) + injOpenTime;
-    return { 
-      (uint16_t)min(primary, (uint32_t)UINT16_MAX),
-      (uint16_t)min(secondary, (uint32_t)UINT16_MAX),
-    };
-  }
-
-  return { (uint16_t)min(pwPrimaryStaged + injOpenTime, (uint32_t)UINT16_MAX), 0U};
-}
-
-static inline pulseWidths applyStagingModeAuto(uint16_t primaryPW, uint16_t pwLimit, uint16_t injOpenTime, const config10 &page10) {
-  uint32_t pwPrimaryStaged = calcStagePrimaryPw(calcTotalStagePw(primaryPW, injOpenTime, page10), page10);
-
-  //If automatic mode, the primary injectors are used all the way up to their limit (Configured by the pulsewidth limit setting)
-  //If they exceed their limit, the extra duty is passed to the secondaries
-  if(pwPrimaryStaged > pwLimit)
-  {
-    uint32_t extraPW = pwPrimaryStaged - pwLimit + injOpenTime; //The open time must be added here AND below because pwPrimaryStaged does not include an open time. The addition of it here takes into account the fact that pwLlimit does not contain an allowance for an open time. 
-    uint32_t secondary = fast_div(extraPW * page10.stagedInjSizePri, page10.stagedInjSizeSec) + injOpenTime;
-    return { 
-      pwLimit,
-      (uint16_t)min(secondary, (uint32_t)UINT16_MAX),
-    };
-  }
-
-  return { (uint16_t)min(pwPrimaryStaged + injOpenTime, (uint32_t)UINT16_MAX), 0U};
-}
-
-
+// Staged injection was removed from this fork (single-cylinder build with a single injector).
+// The secondary injector channel is never used, so its pulsewidth is always 0.
 TESTABLE_INLINE_STATIC pulseWidths calculateSecondaryPw(uint16_t primaryPw, uint16_t pwLimit, uint16_t injOpenTime, const config2 &page2, const config10 &page10, const statuses &current) {
-  if(canApplyStaging(page2, page10) && (primaryPw!=0U) )
-  {
-    //Scale the 'full' pulsewidth by each of the injector capacities
-    if(page10.stagingMode == STAGING_MODE_TABLE) {
-      return applyStagingModeTable(primaryPw, injOpenTime, page10, current);
-    }
-    if(page10.stagingMode == STAGING_MODE_AUTO) {
-      return applyStagingModeAuto(primaryPw, pwLimit, injOpenTime, page10);
-    }
-  }
-
+  (void)pwLimit;
+  (void)injOpenTime;
+  (void)page2;
+  (void)page10;
+  (void)current;
   return { primaryPw, 0U };
 }
 

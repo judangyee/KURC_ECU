@@ -32,11 +32,6 @@ void endCoil7Charge(void);
 void beginCoil8Charge(void);
 void endCoil8Charge(void);
 
-//The following functions are used specifically for the trailing coil on rotary engines. They are separate as they also control the switching of the trailing select pin
-void beginTrailingCoilCharge(void);
-void endTrailingCoilCharge1(void);
-void endTrailingCoilCharge2(void);
-
 //And the combined versions of the above for simplicity
 void beginCoil1and3Charge(void);
 void endCoil1and3Charge(void);

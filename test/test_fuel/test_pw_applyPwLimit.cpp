@@ -12,14 +12,6 @@ static void test_inactive_cranking(void) {
     TEST_ASSERT_EQUAL(1000, applyPwLimits(1000, 500, page10, current));
 }
 
-static void test_inactive_staging(void) {
-    config10 page10 = {};
-    statuses current = {};
-
-    page10.stagingEnabled = true;
-    TEST_ASSERT_EQUAL(1000, applyPwLimits(1000, 500, page10, current));
-}
-
 static void test_limit_applied(void) {
     config10 page10 = {};
     statuses current = {};
@@ -38,7 +30,6 @@ void testApplyPwLimit(void)
 {
   SET_UNITY_FILENAME() {
     RUN_TEST_P(test_inactive_cranking);
-    RUN_TEST_P(test_inactive_staging);
     RUN_TEST_P(test_limit_applied);
     RUN_TEST_P(test_limit_not_applied);
   }

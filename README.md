@@ -41,10 +41,12 @@ pio run -e megaatmega2560
 
 ## 커스터마이징 로드맵
 
+- [x] 푸시-투-스타트(스타터 버튼) 컨트롤 추가
+- [x] 안 쓰는 기능 제거 (나이트로스, WMI, VVT, 로터리 점화, 스테이지드 인젝션,
+      시퀀셜 연료 트림, CAN/세컨더리 시리얼) — 상세: [docs/cbr300r-setup.md](docs/cbr300r-setup.md)
 - [ ] CBR300R 크랭크/캠 트리거 데이터 확보 (서비스 매뉴얼 또는 Tooth Logger 실측)
 - [ ] 트리거 디코더 확정 (기존 디코더 매칭 또는 신규 추가)
 - [ ] TunerStudio 튠(.msq) 초안 작성
-- [ ] 필요 없는 기능/보드 타겟 정리
 
 ## Contributors
 

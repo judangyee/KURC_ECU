@@ -98,30 +98,6 @@ static void enableStaging(void)
   configPage10.stagedInjSizeSec = 500;
 }
 
-static void cylinder1_stroke4_seq_staged(void)
-{
-  configPage2.injLayout = INJ_SEQUENTIAL;
-  configPage2.injTiming = true;
-  enableStaging();
-  initialiseAll(); //Run the main initialise function
-	const bool enabled[] = {true, true, false, false, false, false, false, false};
-	const uint16_t angle[] = {0,0,0,0,0,0,0,0};
-  assert_fuel_schedules(720U, enabled, angle, __LINE__);
-  TEST_ASSERT_EQUAL(INJ_SEQUENTIAL, currentStatus.injLayout);
-}
-
-static void cylinder1_stroke4_semiseq_staged(void)
-{
-  configPage2.injLayout = INJ_SEMISEQUENTIAL;
-  configPage2.injTiming = true;
-  enableStaging();
-  initialiseAll(); //Run the main initialise function
-	const bool enabled[] = {true, true, false, false, false, false, false, false};
-	const uint16_t angle[] = {0,0,0,0,0,0,0,0};
-  assert_fuel_schedules(720U, enabled, angle, __LINE__);
-  TEST_ASSERT_EQUAL(INJ_SEMISEQUENTIAL, currentStatus.injLayout);
-}
-
 static void run_1_cylinder_4stroke_tests(void)
 {
   prepareForInitialiseAll(3U);
@@ -132,8 +108,6 @@ static void run_1_cylinder_4stroke_tests(void)
 
   RUN_TEST_P(cylinder1_stroke4_seq_nostage);
   RUN_TEST_P(cylinder1_stroke4_semiseq_nostage);
-  RUN_TEST_P(cylinder1_stroke4_seq_staged);
-  RUN_TEST_P(cylinder1_stroke4_semiseq_staged);
 }
 
 static void cylinder1_stroke2_seq_nostage(void)
@@ -160,30 +134,6 @@ static void cylinder1_stroke2_semiseq_nostage(void)
   TEST_ASSERT_EQUAL(INJ_SEMISEQUENTIAL, currentStatus.injLayout);
 }
 
-static void cylinder1_stroke2_seq_staged(void)
-{
-  configPage2.injLayout = INJ_SEQUENTIAL;
-  configPage2.injTiming = true;
-  enableStaging();
-  initialiseAll(); //Run the main initialise function
-	const bool enabled[] = {true, true, false, false, false, false, false, false};
-	const uint16_t angle[] = {0,0,0,0,0,0,0,0};
-  assert_fuel_schedules(360U, enabled, angle, __LINE__);
-  TEST_ASSERT_EQUAL(INJ_SEQUENTIAL, currentStatus.injLayout);
-}
-
-static void cylinder1_stroke2_semiseq_staged(void)
-{
-  configPage2.injLayout = INJ_SEMISEQUENTIAL;
-  configPage2.injTiming = true;
-  enableStaging();
-  initialiseAll(); //Run the main initialise function
-  const bool enabled[] = {true, true, false, false, false, false, false, false};
-  const uint16_t angle[] = {0,0,0,0,0,0,0,0};
-  assert_fuel_schedules(360U, enabled, angle, __LINE__);
-  TEST_ASSERT_EQUAL(INJ_SEMISEQUENTIAL, currentStatus.injLayout);
-}
-
 static void run_1_cylinder_2stroke_tests(void)
 {
   prepareForInitialiseAll(3U);
@@ -194,8 +144,6 @@ static void run_1_cylinder_2stroke_tests(void)
 
   RUN_TEST_P(cylinder1_stroke2_seq_nostage);
   RUN_TEST_P(cylinder1_stroke2_semiseq_nostage);
-  RUN_TEST_P(cylinder1_stroke2_seq_staged);
-  RUN_TEST_P(cylinder1_stroke2_semiseq_staged);
 }
 
 static void assert_2cylinder_4stroke_seq_nostage(int assertLineNum)

@@ -127,37 +127,6 @@ static void test_calculateIgnitionAngles_wasted_ignores_individual_trim(void)
     TEST_ASSERT_EQUAL_INT16(30, ignitionSchedule2.dischargeAngle);
 }
 
-static void test_calculateIgnitionAngles_rotary(void)
-{
-    ignition_test_context_t context;
-    CRANK_ANGLE_MAX_IGN = 360;
-    context.current.maxIgnOutputs = 4U;
-    context.page4.sparkMode = IGN_MODE_ROTARY;
-    context.page2.nCylinders = 4U;
-
-    setup_ignition_channel_angles();
-    context.calculateIgnitionAngles();
-    assert_ignition_angles(context);
-}
-
-static void test_calculateIgnitionAngles_rotary_non_4_output_uses_non_rotary(void)
-{
-#if IGN_CHANNELS >= 5
-    ignition_test_context_t context;
-    CRANK_ANGLE_MAX_IGN = 720;
-    context.current.maxIgnOutputs = 5U;  // Not 4
-    context.page4.sparkMode = IGN_MODE_ROTARY;
-
-    setup_ignition_channel_angles();
-    context.calculateIgnitionAngles();
-
-    // Even though sparkMode is ROTARY, if maxIgnOutputs != 4, non-rotary path is used
-    TEST_ASSERT_NOT_EQUAL(0U, ignitionSchedule5.chargeAngle + ignitionSchedule5.dischargeAngle);
-#else
-    TEST_IGNORE_MESSAGE("Skipping - not enough ignition channels");
-#endif
-}
-
 static void test_calculateIgnitionAngles_sync_state_transitions(void)
 {
     ignition_test_context_t context;
@@ -516,59 +485,12 @@ static void test_initialize_sequential_callbacks(void)
     assert_sequential_callbacks();
 }
 
-static void test_initialize_rotary_fc_callbacks(void)
-{
-    resetIgnitionSchedulers();
-    setCallbacks(IGN_MODE_ROTARY, 0U, ROTARY_IGN_FC);
-
-    RUNIF_IGNCHANNEL1( { assert_callbacks(ignitionSchedule1, beginCoil1Charge, endCoil1Charge); }, {});
-    RUNIF_IGNCHANNEL2( { assert_callbacks(ignitionSchedule2, beginCoil1Charge, endCoil1Charge); }, {});
-    RUNIF_IGNCHANNEL3( { assert_callbacks(ignitionSchedule3, beginTrailingCoilCharge, endTrailingCoilCharge1); }, {});
-    RUNIF_IGNCHANNEL4( { assert_callbacks(ignitionSchedule4, beginTrailingCoilCharge, endTrailingCoilCharge2); }, {});
-    RUNIF_IGNCHANNEL5( { assert_callbacks(ignitionSchedule5, nullCallback, nullCallback); }, {});
-    RUNIF_IGNCHANNEL6( { assert_callbacks(ignitionSchedule6, nullCallback, nullCallback); }, {});
-    RUNIF_IGNCHANNEL7( { assert_callbacks(ignitionSchedule7, nullCallback, nullCallback); }, {});
-    RUNIF_IGNCHANNEL8( { assert_callbacks(ignitionSchedule8, nullCallback, nullCallback); }, {});
-}
-
-static void test_initialize_rotary_fd_callbacks(void)
-{
-    resetIgnitionSchedulers();
-    setCallbacks(IGN_MODE_ROTARY, 0U, ROTARY_IGN_FD);
-
-    RUNIF_IGNCHANNEL1( { assert_callbacks(ignitionSchedule1, beginCoil1Charge, endCoil1Charge); }, {});
-    RUNIF_IGNCHANNEL2( { assert_callbacks(ignitionSchedule2, beginCoil1Charge, endCoil1Charge); }, {});
-    RUNIF_IGNCHANNEL3( { assert_callbacks(ignitionSchedule3, beginCoil2Charge, endCoil2Charge); }, {});
-    RUNIF_IGNCHANNEL4( { assert_callbacks(ignitionSchedule4, beginCoil3Charge, endCoil3Charge); }, {});
-    RUNIF_IGNCHANNEL5( { assert_callbacks(ignitionSchedule5, nullCallback, nullCallback); }, {});
-    RUNIF_IGNCHANNEL6( { assert_callbacks(ignitionSchedule6, nullCallback, nullCallback); }, {});
-    RUNIF_IGNCHANNEL7( { assert_callbacks(ignitionSchedule7, nullCallback, nullCallback); }, {});
-    RUNIF_IGNCHANNEL8( { assert_callbacks(ignitionSchedule8, nullCallback, nullCallback); }, {});
-}
-
-static void test_initialize_rotary_rx8_callbacks(void)
-{
-    resetIgnitionSchedulers();
-    setCallbacks(IGN_MODE_ROTARY, 0U, ROTARY_IGN_RX8);
-
-    RUNIF_IGNCHANNEL1( { assert_callbacks(ignitionSchedule1, beginCoil1Charge, endCoil1Charge); }, {});
-    RUNIF_IGNCHANNEL2( { assert_callbacks(ignitionSchedule2, beginCoil2Charge, endCoil2Charge); }, {});
-    RUNIF_IGNCHANNEL3( { assert_callbacks(ignitionSchedule3, beginCoil3Charge, endCoil3Charge); }, {});
-    RUNIF_IGNCHANNEL4( { assert_callbacks(ignitionSchedule4, beginCoil4Charge, endCoil4Charge); }, {});
-    RUNIF_IGNCHANNEL5( { assert_callbacks(ignitionSchedule5, nullCallback, nullCallback); }, {});
-    RUNIF_IGNCHANNEL6( { assert_callbacks(ignitionSchedule6, nullCallback, nullCallback); }, {});
-    RUNIF_IGNCHANNEL7( { assert_callbacks(ignitionSchedule7, nullCallback, nullCallback); }, {});
-    RUNIF_IGNCHANNEL8( { assert_callbacks(ignitionSchedule8, nullCallback, nullCallback); }, {});
-}
-
 void test_ignition_schedule_controller(void)
 {
   SET_UNITY_FILENAME() {
     RUN_TEST_P(test_calculateIgnitionAngles_nonrotary);
     RUN_TEST_P(test_calculateIgnitionAngles_sequential_applies_individual_trim);
     RUN_TEST_P(test_calculateIgnitionAngles_wasted_ignores_individual_trim);
-    RUN_TEST_P(test_calculateIgnitionAngles_rotary);
-    RUN_TEST_P(test_calculateIgnitionAngles_rotary_non_4_output_uses_non_rotary);
     RUN_TEST_P(test_calculateIgnitionAngles_sync_state_transitions);
     RUN_TEST_P(test_setIgnitionChannels_mask_enables_and_disables_channels);
     RUN_TEST_P(test_changeIgnitionToFullSequential);
@@ -585,12 +507,7 @@ void test_ignition_schedule_controller(void)
     RUN_TEST_P(test_initialize_wastedCOP6_callbacks);
     RUN_TEST_P(test_initialize_wastedCOP8_callbacks);
     RUN_TEST_P(test_initialize_sequential_callbacks);
-    RUN_TEST_P(test_initialize_rotary_fc_callbacks);
-    RUN_TEST_P(test_initialize_rotary_fd_callbacks);
-    RUN_TEST_P(test_initialize_rotary_rx8_callbacks);
     RUN_TEST_P(test_calculateIgnitionAngles_nonrotary);
-    RUN_TEST_P(test_calculateIgnitionAngles_rotary);
-    RUN_TEST_P(test_calculateIgnitionAngles_rotary_non_4_output_uses_non_rotary);
     RUN_TEST_P(test_calculateIgnitionAngles_sync_state_transitions);
     RUN_TEST_P(test_setIgnitionChannels_mask_enables_and_disables_channels);
     RUN_TEST_P(test_changeIgnitionToFullSequential);
@@ -607,8 +524,5 @@ void test_ignition_schedule_controller(void)
     RUN_TEST_P(test_initialize_wastedCOP6_callbacks);
     RUN_TEST_P(test_initialize_wastedCOP8_callbacks);
     RUN_TEST_P(test_initialize_sequential_callbacks);
-    RUN_TEST_P(test_initialize_rotary_fc_callbacks);
-    RUN_TEST_P(test_initialize_rotary_fd_callbacks);
-    RUN_TEST_P(test_initialize_rotary_rx8_callbacks);
   }
 }

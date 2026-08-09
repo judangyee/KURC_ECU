@@ -135,8 +135,9 @@ struct statuses {
   // cppcheck-suppress misra-c2012-6.1 ; False positive - MISRA C:2012 Rule (R 6.1) permits the use of boolean for bit fields.
   bool idleOn : 1; ///< Is the idle code active : true == active, false == inactive
 
-  // Status3 fields as defined in the INI.   
-  // TODO: resolve duplication with nitrous_status
+  // Status3 fields as defined in the INI.
+  // Nitrous control was removed from this fork; kept as an always-false bit so the
+  // fixed status3 byte offset in the serial log protocol (and reference/speeduino.ini) is unaffected.
   // cppcheck-suppress misra-c2012-6.1 ; False positive - MISRA C:2012 Rule (R 6.1) permits the use of boolean for bit fields.
   bool nitrousActive : 1; ///< Nitrous on (true) or off (false)
   // cppcheck-suppress misra-c2012-6.1 ; False positive - MISRA C:2012 Rule (R 6.1) permits the use of boolean for bit fields.
@@ -209,7 +210,7 @@ struct statuses {
   uint8_t current_caninchannel = 0; /**< Current CAN channel, defaults to 0 */
   uint16_t crankRPM = 400; /**< The actual cranking RPM limit. This is derived from the value in the config page, but saves us multiplying it every time it's used (Config page value is stored divided by 10) */
   int16_t flexBoostCorrection; /**< Amount of boost added based on flex */
-  byte nitrous_status;
+  byte nitrous_status; ///< Nitrous control was removed from this fork; kept at 0 (NITROUS_OFF) for the fixed log byte offset (case 117 in logger.cpp)
   byte nSquirts;  ///< Number of injector squirts per cycle (per injector)
   uint16_t fuelLoad;
   uint16_t ignLoad;

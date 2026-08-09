@@ -369,23 +369,13 @@ BEGIN_LTO_ALWAYS_INLINE(uint16_t) __attribute__((flatten)) setFuelChannelSchedul
 }
 // LCOV_EXCL_STOP
 
-static inline uint16_t applyFuelTrim(const table3d6RpmLoad &trimTable, uint16_t pw, const config6 &page6, const statuses &current)
-{
-  if (pw!=0U && (page6.fuelTrimEnabled))
-  {
-    int8_t trimPct = FUEL_TRIM.toUser(get3DTableValue(&trimTable, current.fuelLoad, current.RPM));
-    if (trimPct != 0) 
-    { 
-      pw = percentageApprox((uint8_t)(100+trimPct), pw); 
-    }
-  }
-
-  return pw;
-}
-
+// Per-cylinder sequential fuel trim was removed from this fork (single-cylinder
+// build). assignPrimaryPws() now assigns the primary pulsewidth directly.
 static inline void assignPrimaryPws(const pulseWidths &pulse_widths, const config6 &page6, const statuses &current)
 {
-  #define ASSIGN_PRIMARY_PW(index) fuelSchedule ## index .pw = applyFuelTrim(trimTables[index-1U], pulse_widths.primary, page6, current);
+  (void)page6; //Kept for call-site compatibility
+  (void)current;
+  #define ASSIGN_PRIMARY_PW(index) fuelSchedule ## index .pw = pulse_widths.primary;
 
   switch (current.numPrimaryInjOutputs)
   {
@@ -669,15 +659,6 @@ static __attribute__((optimize("Os"))) void initFuelScheduleAngles(statuses &cur
       {
         CRANK_ANGLE_MAX_INJ = 720;
         current.nSquirts = 1;
-      }
-
-      //Check if injector staging is enabled
-      if(page10.stagingEnabled == true)
-      {
-        current.numSecondaryInjOutputs = 1;
-#if (INJ_CHANNELS >= 2)
-        fuelSchedule2.channelDegrees = fuelSchedule1.channelDegrees;
-#endif
       }
       break;
 

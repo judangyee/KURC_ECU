@@ -105,7 +105,7 @@ CBR300R 순정 크랭크/캠 센서의 정확한 릴럭턴트 이빨 수 / 결�
 - `speeduino/src/controllers/fan/` — 냉각팬 제어
 - `speeduino/src/controllers/fuelPump/` — 연료펌프 로직
 - `speeduino/idle.cpp` — 아이들 제어
-- `speeduino/src/controllers/aircon/`, `nitrous/`, `tsCommand/`
+- `speeduino/src/controllers/aircon/`, `tsCommand/`
 
 ## 신규 추가: 푸시-투-스타트(스타터 버튼) 컨트롤
 
@@ -123,11 +123,47 @@ TunerStudio에서 `&Accessories → Push Button Start` 메뉴로 활성화/핀/�
 
 **빌드 검증**: PlatformIO의 패키지 레지스트리(platformio.org)는 이 세션 네트워크 정책상 막혀 있어
 `pio run`은 사용하지 못했다. 대신 `apt`로 `gcc-avr`/`avr-libc`/`arduino-core-avr`를 설치하고,
-`platformio.ini`의 `env:megaatmega2560` 빌드 플래그를 그대로 재현해 전체 소스(92개 파일, 신규
-`starterController` 포함)를 수동으로 컴파일·링크했다. 에러 없이 `firmware.elf`가 생성됨을 확인했다
-(text 260400B / data 384B / bss 6365B, Mega2560 256KB 플래시 예산 내). 다만 PlatformIO가 쓰는
-정확한 링커 스크립트/최적화 플래그와는 완전히 동일하지 않으므로, 실제 보드에 플래싱하기 전에는
-가능하면 `pio run -e megaatmega2560`으로 한 번 더 확인하는 것을 권장한다.
+`platformio.ini`의 `env:megaatmega2560` 빌드 플래그를 그대로 재현해 전체 소스를 수동으로
+컴파일·링크했다. 매 기능 제거/추가마다 이 방식으로 재검증했으며, 최종적으로 에러 없이
+`firmware.elf`가 생성됨을 확인했다. 다만 PlatformIO가 쓰는 정확한 링커 스크립트/최적화 플래그와는
+완전히 동일하지 않으므로, 실제 보드에 플래싱하기 전에는 가능하면 `pio run -e megaatmega2560`으로
+한 번 더 확인하는 것을 권장한다.
+
+## 사용하지 않는 기능 제거
+
+단기통 자작차 용도로 아래 기능을 펌웨어에서 제거했다 (2026-08-09 기준):
+
+- 나이트로스(N2O) 제어
+- WMI (워터메탄 분사) 제어
+- VVT (가변밸브타이밍) 제어
+- 로터리 점화 모드 (RX-8류 로터리 엔진 전용)
+- 스테이지드 인젝션 (2단 인젝터)
+- 시퀀셜 연료 트림 (실린더별 보정)
+- CAN 버스(Mega2560엔 애초에 하드웨어가 없어 컴파일도 안 됐음) / 세컨더리 시리얼(외부 CAN·시리얼 릴레이)
+
+**제거 원칙**: 실제 제어 로직(연산, 출력 구동)은 걷어내되, `config_pages.h`의 EEPROM 페이지 구조나
+`logger.cpp`의 고정 바이트 오프라인 로그 프로토콜, `pages.cpp`/`storage.cpp`의 테이블 저장 슬롯은
+건드리지 않았다. 이유는 이런 것들을 재배치하면 `reference/speeduino.ini`의 오프셋도 전부 같이
+맞춰야 해서 위험도가 훨씬 커지기 때문. 남은 필드/테이블은 그냥 값이 안 쓰이는 채로 존재만 한다
+(플래시 비용은 미미함). TunerStudio 메뉴에서는 해당 기능들이 안 보이도록 정리했다.
+
+로터리 점화의 "Rotary Ignition" 서브메뉴처럼 `{ sparkMode == 4 }` 같은 조건부 메뉴는 실수로 값을
+Rotary로 설정하면 다시 나타날 수 있다 — 코드상으로는 wasted spark로 안전하게 폴백하므로 동작에는
+문제없지만, 완전히 숨기려면 ini 드롭다운 옵션 자체를 손봐야 한다 (미반영, 낮은 우선순위로 남겨둠).
+
+빌드 크기 변화 (수동 컴파일 기준, `env:megaatmega2560` 빌드 플래그):
+
+| 시점 | text (bytes) |
+|---|---|
+| 임포트 직후 + 스타터 버튼 추가 후 | 260,400 |
+| 나이트로스 제거 | 259,320 |
+| WMI + VVT 제거 | 252,566 |
+| 로터리 점화 제거 | 251,498 |
+| 스테이지드 인젝션 제거 | 250,470 |
+| 시퀀셜 연료 트림 제거 | 248,586 |
+| CAN / 세컨더리 시리얼 제거 | 247,308 |
+
+총 약 13KB 절감 (Mega2560 256KB 플래시 기준).
 
 ## 다음 단계
 

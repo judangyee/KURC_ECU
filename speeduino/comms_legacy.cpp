@@ -695,36 +695,12 @@ void legacySerialHandler(byte cmd, Stream &targetPort, SerialStatus &targetStatu
  */
 void sendValues(uint16_t offset, uint16_t packetLength, byte cmd, Stream &targetPort, SerialStatus &targetStatusFlag) { sendValues(offset, packetLength, cmd, targetPort, targetStatusFlag, &getTSLogEntry); } //Defaults to using the standard TS log function
 void sendValues(uint16_t offset, uint16_t packetLength, byte cmd, Stream &targetPort, SerialStatus &targetStatusFlag, uint8_t (*logFunction)(uint16_t))
-{  
-  if (&targetPort == &secondarySerial)
+{
+  (void)cmd; //Only used for the secondary-serial echo, which was removed from this fork along with CAN/secondary serial support
+  if(firstCommsRequest)
   {
-    //Using Secondary serial, check if selected protocol requires the echo back of the command
-    if( (configPage9.secondarySerialProtocol == SECONDARY_SERIAL_PROTO_GENERIC_FIXED) || (configPage9.secondarySerialProtocol == SECONDARY_SERIAL_PROTO_GENERIC_INI) || (configPage9.secondarySerialProtocol == SECONDARY_SERIAL_PROTO_REALDASH))
-    {
-        if (cmd == 0x30) 
-        {
-          secondarySerial.write("r");         //confirm cmd type
-          secondarySerial.write(cmd);
-        }
-        else if (cmd == 0x31)
-        {
-          secondarySerial.write("A");         // confirm command type   
-        }
-        else if (cmd == 0x32)
-        {
-          secondarySerial.write("n");                       // confirm command type
-          secondarySerial.write(cmd);                       // send command type  , 0x32 (dec50) is ascii '0'
-          secondarySerial.write(NEW_CAN_PACKET_SIZE);       // send the packet size the receiving device should expect.
-        }
-    }  
-  }
-  else
-  {
-    if(firstCommsRequest) 
-    { 
-      firstCommsRequest = false;
-      currentStatus.secl = 0; 
-    }
+    firstCommsRequest = false;
+    currentStatus.secl = 0;
   }
 
   //
