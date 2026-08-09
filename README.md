@@ -10,9 +10,16 @@
 - 포크 기준 커밋: `66aabcc72419edf24e884e181f7b17ece29f3a4d` (2026-08-05)
 - 라이선스: 원본과 동일하게 [GPLv2](LICENSE)를 유지합니다. 이 프로젝트의 수정 사항도 GPLv2 하에 배포됩니다.
 
+## 대상 차량/엔진
+
+- 엔진: Honda CBR300R (286cc, 단기통, 4행정)
+- 보드: 시판 Speeduino v0.4.x (Mega2560 기반)
+- 상세 설정/미확정 항목: [docs/cbr300r-setup.md](docs/cbr300r-setup.md)
+
 ## 문서
 
 - Speeduino 공식 매뉴얼: https://wiki.speeduino.com (하드웨어 배선, 튜닝, 센서 스펙 등 기본 구조는 그대로 참고 가능)
+- [CBR300R 적용 노트](docs/cbr300r-setup.md)
 
 ## 빌드
 
@@ -34,9 +41,10 @@ pio run -e megaatmega2560
 
 ## 커스터마이징 로드맵
 
-- [ ] 우리 차량 하드웨어(센서/인젝터/점화 채널 구성)에 맞는 보드 정의 추가
+- [ ] CBR300R 크랭크/캠 트리거 데이터 확보 (서비스 매뉴얼 또는 Tooth Logger 실측)
+- [ ] 트리거 디코더 확정 (기존 디코더 매칭 또는 신규 추가)
+- [ ] TunerStudio 튠(.msq) 초안 작성
 - [ ] 필요 없는 기능/보드 타겟 정리
-- [ ] 우리 배선/핀맵 문서화
 
 ## Contributors
 
