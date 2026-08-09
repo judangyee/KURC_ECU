@@ -60,7 +60,7 @@ jobs:
         platformio test -e ${{ env.PIO_ENV }} ${{ vars.PIO_CMD_PARAMS }}
 
     - name: Upload to CodeCov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       if: ${{ !env.ACT }}
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
