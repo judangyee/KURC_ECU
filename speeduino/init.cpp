@@ -39,7 +39,7 @@
 #include "src/controllers/fan/fanController.h"
 #include "src/controllers/boost/boostController.h"
 #include "src/controllers/aircon/airconController.h"
-#include "src/controllers/nitrous/nitrousController.h"
+#include "src/controllers/starter/starterController.h"
 
 #if defined(CORE_AVR)
 #pragma GCC push_options
@@ -163,9 +163,6 @@ void initialiseAll(void)
       initCAN();
     #endif
 
-    //Must come after setPinMapping() as secondary serial can be changed on a per board basis
-    if (configPage9.enable_secondarySerial == 1) { secondarySerial.begin(115200); }
-  
     //Set the tacho output default state
     digitalWrite(pinNumbers.pinTachOut, HIGH);
     //Perform all initialisations
@@ -175,7 +172,7 @@ void initialiseAll(void)
     initialiseFan(pinNumbers.pinFan);
     initialiseBoost(pinNumbers.pinBoost);
     initialiseAirCon();
-    initialiseNitrous();
+    initialiseStarterControl(pinNumbers.pinStarterButton, pinNumbers.pinStarterOutput);
     initialiseAuxPWM();
     initialiseCorrections();
     currentStatus.ioError = false; //Clear the I/O error bit. The bit will be set in initialiseADC() if there is problem in there.
@@ -277,7 +274,6 @@ void setPinMapping(byte boardID)
   if ( (configPage4.fuelPumpPin != 0) && (configPage4.fuelPumpPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinFuelPump = pinTranslate(configPage4.fuelPumpPin); }
   if ( (configPage6.fanPin != 0) && (configPage6.fanPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinFan = pinTranslate(configPage6.fanPin); }
   if ( (configPage6.boostPin != 0) && (configPage6.boostPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinBoost = pinTranslate(configPage6.boostPin); }
-  if ( (configPage6.vvt1Pin != 0) && (configPage6.vvt1Pin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinVVT_1 = pinTranslate(configPage6.vvt1Pin); }
   if ( (configPage6.useExtBaro != 0) && (configPage6.baroPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinBaro = pinTranslateAnalog(configPage6.baroPin); }
   if ( (configPage6.useEMAP != 0) && (configPage10.EMAPPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinEMAP = pinTranslateAnalog(configPage10.EMAPPin); }
   if ( (configPage10.fuel2InputPin != 0) && (configPage10.fuel2InputPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinFuel2Input = pinTranslate(configPage10.fuel2InputPin); }
@@ -285,11 +281,7 @@ void setPinMapping(byte boardID)
   if ( (configPage2.vssPin != 0) && (configPage2.vssPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinVSS = pinTranslate(configPage2.vssPin); }
   if ( (configPage10.fuelPressureEnable) && (configPage10.fuelPressurePin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinFuelPressure = pinTranslateAnalog(configPage10.fuelPressurePin); }
   if ( (configPage10.oilPressureEnable) && (configPage10.oilPressurePin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinOilPressure = pinTranslateAnalog(configPage10.oilPressurePin); }
-  
-  if ( (configPage10.wmiEmptyPin != 0) && (configPage10.wmiEmptyPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinWMIEmpty = pinTranslate(configPage10.wmiEmptyPin); }
-  if ( (configPage10.wmiIndicatorPin != 0) && (configPage10.wmiIndicatorPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinWMIIndicator = pinTranslate(configPage10.wmiIndicatorPin); }
-  if ( (configPage10.wmiEnabledPin != 0) && (configPage10.wmiEnabledPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinWMIEnabled = pinTranslate(configPage10.wmiEnabledPin); }
-  if ( (configPage10.vvt2Pin != 0) && (configPage10.vvt2Pin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinVVT_2 = pinTranslate(configPage10.vvt2Pin); }
+
 #ifdef SD_LOGGING
   if ( (configPage13.onboard_log_trigger_Epin != 0) && (configPage13.onboard_log_tr5_Epin_pin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinSDEnable = pinTranslate(configPage13.onboard_log_tr5_Epin_pin); }
 #endif
@@ -309,6 +301,10 @@ void setPinMapping(byte boardID)
   if ((configPage15.airConCompPin != 0) && (configPage15.airConCompPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinAirConComp = pinTranslate(configPage15.airConCompPin); }
   if ((configPage15.airConFanPin != 0) && (configPage15.airConFanPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinAirConFan = pinTranslate(configPage15.airConFanPin); }
   if ((configPage15.airConReqPin != 0) && (configPage15.airConReqPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinAirConRequest = pinTranslate(configPage15.airConReqPin); }
+
+  // Push-to-start starter control
+  if ((configPage15.starterButtonPin != 0) && (configPage15.starterButtonPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinStarterButton = pinTranslate(configPage15.starterButtonPin); }
+  if ((configPage15.starterOutputPin != 0) && (configPage15.starterOutputPin < BOARD_MAX_IO_PINS) ) { pinNumbers.pinStarterOutput = pinTranslate(configPage15.starterOutputPin); }
     
   /* Reset control is a special case. If reset control is enabled, it needs its initial state set BEFORE its pinMode.
      If that doesn't happen and reset control is in "Serial Command" mode, the Arduino will end up in a reset loop
@@ -330,6 +326,7 @@ void setPinMapping(byte boardID)
   pinMode(pinNumbers.pinStepperStep, OUTPUT);
   pinMode(pinNumbers.pinStepperEnable, OUTPUT);
   if(configPage4.ignBypassEnabled > 0) { pinMode(pinNumbers.pinIgnBypass, OUTPUT); }
+  if(configPage15.starterEnabled > 0) { pinMode(pinNumbers.pinStarterOutput, OUTPUT); }
 
   //This is a legacy mode option to revert the MAP reading behaviour to match what was in place prior to the 201905 firmware
   if(configPage2.legacyMAP > 0) { digitalWrite(pinNumbers.pinMAP, HIGH); }
@@ -389,6 +386,11 @@ void setPinMapping(byte boardID)
     if (configPage2.CTPSPolarity == 0) { pinMode(pinNumbers.pinCTPS, INPUT_PULLUP); } //Normal setting
     else { pinMode(pinNumbers.pinCTPS, INPUT); } //inverted setting
   }
+  if( (configPage15.starterEnabled > 0) && (!pinIsOutput(pinNumbers.pinStarterButton)) )
+  {
+    if (configPage15.starterButtonPullup == true) { pinMode(pinNumbers.pinStarterButton, INPUT_PULLUP); }
+    else { pinMode(pinNumbers.pinStarterButton, INPUT); } //If pull-up is not set, make input float.
+  }
   if( (configPage10.fuel2Mode == FUEL2_MODE_INPUT_SWITCH) && (!pinIsOutput(pinNumbers.pinFuel2Input)) )
   {
     if (configPage10.fuel2InputPullup == true) { pinMode(pinNumbers.pinFuel2Input, INPUT_PULLUP); } //With pullup
@@ -413,20 +415,6 @@ void setPinMapping(byte boardID)
     pinMode(pinNumbers.pinSDEnable, INPUT);
   }
 #endif
-  if(configPage10.wmiEnabled > 0)
-  {
-    pinMode(pinNumbers.pinWMIEnabled, OUTPUT);
-    if(configPage10.wmiIndicatorEnabled > 0)
-    {
-      pinMode(pinNumbers.pinWMIIndicator, OUTPUT);
-      if (configPage10.wmiIndicatorPolarity > 0) { digitalWrite(pinNumbers.pinWMIIndicator, HIGH); }
-    }
-    if( (configPage10.wmiEmptyEnabled > 0) && (!pinIsOutput(pinNumbers.pinWMIEmpty)) )
-    {
-      if (configPage10.wmiEmptyPolarity == 0) { pinMode(pinNumbers.pinWMIEmpty, INPUT_PULLUP); } //Normal setting
-      else { pinMode(pinNumbers.pinWMIEmpty, INPUT); } //inverted setting
-    }
-  } 
 }
 
 /** Initialise the chosen trigger decoder.

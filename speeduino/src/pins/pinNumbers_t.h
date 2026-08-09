@@ -82,6 +82,8 @@ struct pinNumbers_t
   uint8_t pinStepperStep = NOT_A_PIN; //Step pin for the stepper motor driver
   uint8_t pinStepperEnable = NOT_A_PIN; //Turning the DRV8825 driver on/off
   uint8_t pinLaunch = NOT_A_PIN;
+  uint8_t pinStarterButton = NOT_A_PIN; //Push-to-start button input
+  uint8_t pinStarterOutput = NOT_A_PIN; //Starter relay/solenoid output
   uint8_t pinIgnBypass = NOT_A_PIN; //The pin used for an ignition bypass (Optional)
   uint8_t pinFlex = NOT_A_PIN; //Pin with the flex sensor attached
   uint8_t pinVSS = NOT_A_PIN; 

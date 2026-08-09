@@ -14,7 +14,6 @@
 extern void SetRevolutionTime(uint32_t revTime);
 extern uint32_t _calculateIgnitionTimeout(const IgnitionSchedule &schedule, int16_t crankAngle);
 extern void calculateIgnitionAngles(IgnitionSchedule &schedule, uint16_t dwellAngle, int8_t advance);
-extern void calculateIgnitionTrailingRotary(IgnitionSchedule &leading, uint16_t dwellAngle, int16_t rotarySplitDegrees, IgnitionSchedule &trailing);
 
 constexpr uint16_t DWELL_TIME_MS = 4;
 
@@ -557,68 +556,11 @@ void test_calc_ign_timeout_720()
   test_calc_ign_timeout(&test_data[0], &test_data[0]+_countof(test_data));
 }
 
-void test_rotary_channel_calcs(void)
-{
-    setEngineSpeed(4000, 360);
-
-    static const int test_data[][5] PROGMEM = {
-        // End Angle (deg), Dwell Angle, rotary split degrees, expected end angle, expected start angle
-        { 320, 5, 0, 320, 315 },
-        { 320, 95, 0, 320, 225 },
-        { 320, 185, 0, 320, 135 },
-        { 320, 275, 0, 320, 45 },
-        { 320, 355, 0, 320, 325 },
-        { 320, 5, 40, 0, 355 },
-        { 320, 95, 40, 0, 265 },
-        { 320, 185, 40, 0, 175 },
-        { 320, 275, 40, 0, 85 },
-        { 320, 355, 40, 0, 5 },
-        { 0, 5, 0, 0, 355 },
-        { 0, 95, 0, 0, 265 },
-        { 0, 185, 0, 0, 175 },
-        { 0, 275, 0, 0, 85 },
-        { 0, 355, 0, 0, 5 },
-        { 0, 5, 40, 40, 35 },
-        { 0, 95, 40, 40, 305 },
-        { 0, 185, 40, 40, 215 },
-        { 0, 275, 40, 40, 125 },
-        { 0, 355, 40, 40, 45 },
-        { 40, 5, 0, 40, 35 },
-        { 40, 95, 0, 40, 305 },
-        { 40, 185, 0, 40, 215 },
-        { 40, 275, 0, 40, 125 },
-        { 40, 355, 0, 40, 45 },
-        { 40, 5, 40, 80, 75 },
-        { 40, 95, 40, 80, 345 },
-        { 40, 185, 40, 80, 255 },
-        { 40, 275, 40, 80, 165 },
-        { 40, 355, 40, 80, 85 },
-    };
-
-    const int (*pStart)[5] = &test_data[0];
-    const int (*pEnd)[5] = &test_data[0]+_countof(test_data);
-
-    IgnitionSchedule leading(IGN4_COUNTER, IGN4_COMPARE);
-    IgnitionSchedule trailing(IGN4_COUNTER, IGN4_COMPARE);
-    int local[5];
-    while (pStart!=pEnd)
-    {
-        memcpy_P(local, pStart, sizeof(local));
-        leading.dischargeAngle = local[0];
-        calculateIgnitionTrailingRotary(leading, local[1], local[2], trailing);
-        TEST_ASSERT_EQUAL_MESSAGE(local[3], trailing.dischargeAngle, "dischargeAngle");
-        TEST_ASSERT_EQUAL_MESSAGE(local[4], trailing.chargeAngle, "startAngle");
-        ++pStart;
-    } 
-
-}
-
 void test_calc_ign_timeout(void)
 {
   SET_UNITY_FILENAME() {
 
     RUN_TEST(test_calc_ign_timeout_360);
     RUN_TEST(test_calc_ign_timeout_720);
-    RUN_TEST(test_rotary_channel_calcs);
   }
 }

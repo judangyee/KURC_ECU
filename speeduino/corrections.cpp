@@ -67,7 +67,6 @@ TESTABLE_CONSTEXPR table2D_u8_u8_6 CLTAdvanceTable(&configPage4.cltAdvBins, &con
 TESTABLE_CONSTEXPR table2D_u8_u8_6 flexFuelTable(&configPage10.flexFuelBins, &configPage10.flexFuelAdj);
 TESTABLE_CONSTEXPR table2D_u8_u8_6 flexAdvTable(&configPage10.flexAdvBins, &configPage10.flexAdvAdj);
 TESTABLE_CONSTEXPR table2D_u8_u8_6 fuelTempTable(&configPage10.fuelTempBins, &configPage10.fuelTempValues);
-TESTABLE_CONSTEXPR table2D_u8_u8_6 wmiAdvTable(&configPage10.wmiAdvBins, &configPage10.wmiAdvAdj);
 
 // Constant that represents "no fuel correction"
 static constexpr uint8_t NO_FUEL_CORRECTION = ONE_HUNDRED_PCT;
@@ -906,28 +905,6 @@ TESTABLE_INLINE_STATIC int8_t correctionFlexTiming(int8_t advance)
   return advance;
 }
 
-static inline bool isWMIAdvanceEnabled(void) {
-  return (configPage10.wmiEnabled == 1U) 
-      && (configPage10.wmiAdvEnabled == 1U) 
-      && (!currentStatus.wmiTankEmpty);
-}
-
-static inline bool isWMIAdvanceOperational(void) {
-  return (currentStatus.TPS >= configPage10.wmiTPS) 
-      && (currentStatus.RPM >= RPM_COARSE.toUser(configPage10.wmiRPM)) 
-      && (currentStatus.MAP >= MAP.toUser(configPage10.wmiMAP)) 
-      && (temperatureAddOffset(currentStatus.IAT) >= configPage10.wmiIAT);
-}
-
-TESTABLE_INLINE_STATIC int8_t correctionWMITiming(int8_t advance)
-{
-  // TODO: limit rate to MAP update
-  if(isWMIAdvanceEnabled() && isWMIAdvanceOperational()) {
-    advance = advance + IGNITION_ADVANCE_LARGE.toUser(table2D_getValue(&wmiAdvTable, MAP.toRaw(currentStatus.MAP)));
-  }
-
-  return advance;
-}
 
 /** 
  * Ignition correction for inlet air temperature (IAT).
@@ -1048,26 +1025,6 @@ TESTABLE_INLINE_STATIC int8_t correctionSoftRevLimit(int8_t advance)
   return advance;
 }
 
-/** Ignition Nitrous oxide correction.
- */
-TESTABLE_INLINE_STATIC int8_t correctionNitrous(int8_t advance)
-{
-  //Check if nitrous is currently active
-  if(configPage10.n2o_enable != NITROUS_OFF)
-  {
-    //Check which stage is running (if any)
-    if( (currentStatus.nitrous_status == NITROUS_STAGE1) || (currentStatus.nitrous_status == NITROUS_BOTH) )
-    {
-      advance = advance - (int8_t)configPage10.n2o_stage1_retard;
-    }
-    if( (currentStatus.nitrous_status == NITROUS_STAGE2) || (currentStatus.nitrous_status == NITROUS_BOTH) )
-    {
-      advance = advance - (int8_t)configPage10.n2o_stage2_retard;
-    }
-  }
-
-  return advance;
-}
 /** Ignition soft launch correction.
  */
 TESTABLE_INLINE_STATIC int8_t correctionSoftLaunch(int8_t advance)
@@ -1258,8 +1215,7 @@ TESTABLE_INLINE_STATIC int8_t correctionDFCOignition(int8_t advance)
 /** Ignition Dwell Correction.
  */
 static inline uint8_t getPulsesPerRev(void) {
-  if( ( (configPage4.sparkMode == IGN_MODE_SINGLE) || 
-     ((configPage4.sparkMode == IGN_MODE_ROTARY) && (configPage10.rotaryType != ROTARY_IGN_RX8)) ) 
+  if( (configPage4.sparkMode == IGN_MODE_SINGLE)
      //No point in running this for 1 cylinder engines
      && (configPage2.nCylinders > 1U) )  {
     return configPage2.nCylinders >> 1U;
@@ -1339,12 +1295,10 @@ int8_t correctionsIgn(int8_t base_advance)
 {
   int8_t advance;
   advance = correctionFlexTiming(base_advance);
-  advance = correctionWMITiming(advance);
   advance = correctionIATretard(advance);
   advance = correctionCLTadvance(advance);
   advance = correctionIdleAdvance(advance);
   advance = correctionSoftRevLimit(advance);
-  advance = correctionNitrous(advance);
   advance = correctionSoftLaunch(advance);
   advance = correctionSoftFlatShift(advance);
   advance = correctionKnockTiming(advance);

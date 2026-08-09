@@ -2,7 +2,6 @@
 #include "../test_utils.h"
 #include "fuel_calcs.h"
 #include "pw_test_context.h"
-#include "test_pw_applyNitrous.h"
 
 // The tests here don't have to be super detailed: computePulseWidths() just orchestrates
 // calls to other functions which all have detailed tests.
@@ -50,19 +49,6 @@ static void test_PW_ae_adder(void) {
 
   pulseWidths result = computePulseWidths(context);
   TEST_ASSERT_UINT16_WITHIN(1U, NO_MULTIPLY_EXPECTED + expectedOffset, result.primary);
-  TEST_ASSERT_EQUAL(0, result.secondary);
-}
-
-static void test_PW_nitrous_stageboth(void) {
-  // Same as test_PW_No_Multiply, but we add in nitrous
-  auto context = getBasicFullContext();
-
-  setup_nitrous_stage1(context.page10, context.current);
-  setup_nitrous_stage2(context.page10, context.current);
-  context.current.nitrous_status = NITROUS_BOTH;
-
-  pulseWidths result = computePulseWidths(context);
-  TEST_ASSERT_UINT16_WITHIN(1U, NO_MULTIPLY_EXPECTED+NITROUS_STAGE1_BOTH+NITROUS_STAGE2_ADDPW, result.primary);
   TEST_ASSERT_EQUAL(0, result.secondary);
 }
 
@@ -170,7 +156,6 @@ void testComputePulseWidths(void)
     RUN_TEST_P(test_PW_Very_Large_Correction);
     RUN_TEST_P(test_PW_batt_correction);
     RUN_TEST_P(test_PW_ae_adder);
-    RUN_TEST_P(test_PW_nitrous_stageboth);
     RUN_TEST_P(test_PW_Zero_Correction);
   }
 }

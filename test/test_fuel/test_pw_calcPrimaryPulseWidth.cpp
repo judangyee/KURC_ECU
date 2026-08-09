@@ -1,7 +1,6 @@
 #include <unity.h>
 #include "../test_utils.h"
 #include "pw_test_context.h"
-#include "test_pw_applyNitrous.h"
 #include "config_pages.h"
 #include "statuses.h"
 #include "decoders.h"
@@ -151,14 +150,6 @@ static void test_calcPrimaryPulseWidth_AeAdder(void) {
   TEST_ASSERT_EQUAL(750, calcPrimaryPulseWidth(1000, 75, 1, 100, 0, context));
 }
 
-static void test_calcPrimaryPulseWidth_Nitrous(void) {
-  // We only need to check that nitrous is added, as that is tested in pwApplyNitrous
-  auto context = getBasicPwContext();
-  setup_nitrous_stage1(context.page10, context.current);
-  TEST_ASSERT_GREATER_THAN(750, calcPrimaryPulseWidth(1000, 75, 1, 100, 0, context));
-}
-
-
 void testCalcPrimaryPulseWidth(void)
 {
   SET_UNITY_FILENAME() {
@@ -168,6 +159,5 @@ void testCalcPrimaryPulseWidth(void)
     RUN_TEST_P(test_calcPrimaryPulseWidth_MapMode100);
     RUN_TEST_P(test_calcPrimaryPulseWidth_MapModeBaro);
     RUN_TEST_P(test_calcPrimaryPulseWidth_AeAdder);
-    RUN_TEST_P(test_calcPrimaryPulseWidth_Nitrous);
-  }  
+  }
 }

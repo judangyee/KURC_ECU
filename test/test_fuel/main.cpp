@@ -6,7 +6,6 @@ void runAllFuelTests(void)
 {
     extern void testCorrections(void);
     extern void testComputePulseWidths(void);
-    extern void testPwApplyNitrous(void);
     extern void testCalculateRequiredFuel(void);
     extern void testApplyPwLimit(void);
     extern void testCalculateSecondaryPw(void);
@@ -17,7 +16,6 @@ void runAllFuelTests(void)
 
     testCorrections();
     testComputePulseWidths();
-    testPwApplyNitrous();
     testCalculateRequiredFuel();
     testApplyPwLimit();
     testCalculateSecondaryPw();

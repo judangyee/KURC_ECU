@@ -927,8 +927,21 @@ struct config15 : public config_page_t {
 
   int8_t rollingProtRPMDelta[4]; // Signed RPM value representing how much below the RPM limit. Divided by 10
   byte rollingProtCutPercent[4];
-  
-  //Bytes 106-255
-  byte Unused15_106_255[150];
+
+  //Byte 106 - Starter control (push-to-start) binary points
+  byte starterEnabled : 1;
+  byte starterButtonPin : 6;
+  byte starterButtonPolarity : 1; ///< 0 = active low (button pulls pin LOW when pressed), 1 = active high
+
+  //Byte 107 - Starter control analog points
+  byte starterOutputPin : 6;
+  byte starterOutputInverted : 1; ///< 0 = normal (output HIGH energises the starter relay), 1 = inverted
+  byte starterButtonPullup : 1; ///< Enable the internal pull-up resistor on the button pin
+
+  //Byte 108
+  byte starterMaxCrankTime; ///< Maximum continuous cranking time before auto cutoff, in 0.1s increments (Safety limit in case the engine doesn't catch)
+
+  //Bytes 109-255
+  byte Unused15_109_255[147];
 
 } __attribute__((packed,aligned(__alignof__(uint16_t)))); //The 32 bit systems require all structs to be fully packed, aligned to their largest member type 

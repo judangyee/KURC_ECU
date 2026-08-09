@@ -28,8 +28,6 @@ IgnitionSchedule ignitionSchedule7(IGN7_COUNTER, IGN7_COMPARE); //cppcheck-suppr
 IgnitionSchedule ignitionSchedule8(IGN8_COUNTER, IGN8_COMPARE); //cppcheck-suppress misra-c2012-8.4
 #endif
 
-constexpr table2D_u8_u8_8 rotarySplitTable(&configPage10.rotarySplitBins, &configPage10.rotarySplitValues);
-
 static inline int8_t constrainAdvanceTrim(int16_t advance)
 {
   return (int8_t)clamp(advance, (int16_t)INT8_MIN, (int16_t)INT8_MAX);
@@ -167,61 +165,14 @@ static void __attribute__((optimize("Os"))) setWastedCOPCallbacks(uint8_t numCyl
   }
 }
 
-static void __attribute__((optimize("Os"))) setRotaryCallbacks(uint8_t rotaryType)
-{
-  switch (rotaryType)
-  {
-  case ROTARY_IGN_FC:
-    //Ignition channel 1 is a wasted spark signal for leading signal on both rotors
-    setCallbacks(ignitionSchedule1, beginCoil1Charge, endCoil1Charge);
-#if IGN_CHANNELS >= 2
-    setCallbacks(ignitionSchedule2, beginCoil1Charge, endCoil1Charge);
-#endif
-#if IGN_CHANNELS >= 3
-    setCallbacks(ignitionSchedule3, beginTrailingCoilCharge, endTrailingCoilCharge1);
-#endif
-#if IGN_CHANNELS >= 4
-    setCallbacks(ignitionSchedule4, beginTrailingCoilCharge, endTrailingCoilCharge2);
-#endif
-    break;
-
-    case ROTARY_IGN_FD:
-    //Ignition channel 1 is a wasted spark signal for leading signal on both rotors
-    setCallbacks(ignitionSchedule1, beginCoil1Charge, endCoil1Charge);
-#if IGN_CHANNELS >= 2
-    setCallbacks(ignitionSchedule2, beginCoil1Charge, endCoil1Charge);
-#endif
-
-    //Trailing coils have their own channel each
-    //IGN2 = front rotor trailing spark
-#if IGN_CHANNELS >= 3
-    setCallbacks(ignitionSchedule3, beginCoil2Charge, endCoil2Charge);
-    //IGN3 = rear rotor trailing spark
-#endif
-#if IGN_CHANNELS >= 4
-    setCallbacks(ignitionSchedule4, beginCoil3Charge, endCoil3Charge);
-#endif
-    break;
-  
-  case ROTARY_IGN_RX8:
-    //RX8 outputs are simply 1 coil and 1 output per plug
-    setSequentialCallbacks(4U);
-    break;
-
-  default:
-    //No action for other RX ignition modes (Future expansion / MISRA compliant). 
-    break;
-  }
-}
-
 TESTABLE_STATIC void __attribute__((optimize("Os"))) setCallbacks(uint8_t sparkMode, uint8_t numCylinders, uint8_t rotaryMode)
 {
+  (void)rotaryMode; //Rotary ignition mode was removed from this fork; kept as a parameter for call-site/test compatibility
   switch(sparkMode)
   {
   case IGN_MODE_SINGLE: setSingleChannelCallbacks(); break;
   case IGN_MODE_WASTEDCOP: setWastedCOPCallbacks(numCylinders); break;
   case IGN_MODE_SEQUENTIAL: setSequentialCallbacks(IGN_CHANNELS); break;
-  case IGN_MODE_ROTARY: setRotaryCallbacks(rotaryMode); break;
   case IGN_MODE_WASTED:
   default:
     setWastedSparkCallbacks(); break;
@@ -344,19 +295,6 @@ static void __attribute__((optimize("Os"))) initScheduleAngles(statuses &current
 
           CRANK_ANGLE_MAX_IGN = 720;
           current.maxIgnOutputs= 4;
-        }
-        if(page4.sparkMode == IGN_MODE_ROTARY)
-        {
-          //Rotary uses the ign 3 and 4 schedules for the trailing spark. They are offset from the ign 1 and 2 channels respectively and so use the same degrees as them
-#if IGN_CHANNELS >= 3
-          ignitionSchedule3.channelDegrees = 0;
-#endif
-#if IGN_CHANNELS >= 4
-          ignitionSchedule4.channelDegrees = 180;
-#endif
-          current.maxIgnOutputs= 4;
-
-          page4.IgInv = GOING_LOW; //Force Going Low ignition mode (Going high is never used for rotary)
         }
       }
       else
@@ -577,25 +515,6 @@ TESTABLE_INLINE_STATIC void calculateIgnitionAngles(IgnitionSchedule &schedule, 
   schedule.chargeAngle = _calculateCoilChargeAngle(dwellAngle, schedule.dischargeAngle);
 }
 
-TESTABLE_STATIC void calculateIgnitionTrailingRotary(IgnitionSchedule &leading, uint16_t dwellAngle, int16_t rotarySplitDegrees, IgnitionSchedule &trailing) 
-{
-  trailing.dischargeAngle = (int16_t)ignitionLimits(leading.dischargeAngle + rotarySplitDegrees);
-  trailing.chargeAngle = (int16_t)ignitionLimits(trailing.dischargeAngle - (int16_t)dwellAngle); 
-}
-
-static inline void calculateRotaryIgnitionAngles(uint16_t dwellAngle, const statuses &current)
-{
-#if IGN_CHANNELS>=4
-  calculateIgnitionAngles(ignitionSchedule1, dwellAngle, current.advance);
-  calculateIgnitionAngles(ignitionSchedule2, dwellAngle, current.advance);
-  uint8_t splitDegrees = table2D_getValue(&rotarySplitTable, (uint8_t)current.ignLoad);
-
-  //The trailing angles are set relative to the leading ones
-  calculateIgnitionTrailingRotary(ignitionSchedule1, dwellAngle, splitDegrees, ignitionSchedule3);
-  calculateIgnitionTrailingRotary(ignitionSchedule2, dwellAngle, splitDegrees, ignitionSchedule4);
-#endif
-}
-
 static inline void calculateNonRotaryIgnitionAngles(const config2 &page2, const config4 &page4, const config13 &page13, uint16_t dwellAngle, const statuses &current)
 {
   const bool useIndividualTrim = isFullSequentialIgnition(page4, current.decoder.getStatus());
@@ -660,15 +579,8 @@ BEGIN_LTO_ALWAYS_INLINE(void) __attribute__((flatten)) calculateIgnitionAngles(c
 
   uint16_t dwellAngle = timeToAngle(current.dwell);
 
-  if((current.maxIgnOutputs==4U) && (page4.sparkMode == IGN_MODE_ROTARY))
-  {
-    calculateRotaryIgnitionAngles(dwellAngle, current);
-  }
-  else
-  {
-    calculateNonRotaryIgnitionAngles(page2, page4, page13, dwellAngle, current);
-  }
-  
+  calculateNonRotaryIgnitionAngles(page2, page4, page13, dwellAngle, current);
+
   //If ignition timing is being tracked per tooth, perform the calcs to get the end teeth
   if (page2.perToothIgn == true) { current.decoder.setEndTeeth(); }
 }

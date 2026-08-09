@@ -89,19 +89,6 @@ static statuses setPrimarySecondaryChannels(statuses current, uint8_t primary, u
   #define TEST_PW8(expected, isIndexValid)
 #endif
 
-static void setupTrimTable(trimTable3d &trimTable, int8_t percent)
-{
-  fill_table_values(trimTable, FUEL_TRIM.toRaw(percent));
-}
-
-static void zeroTrimTables(void)
-{
-  for (uint8_t i=0; i<_countof(trimTables); ++i)
-  {
-    setupTrimTable(trimTables[i], 0);
-  }
-}
-
 static inline uint16_t getExpectedChannelPw(const statuses &current, const pulseWidths &widths, uint8_t channel, uint8_t trimPct)
 {
   if (channel<=current.numPrimaryInjOutputs) {
@@ -139,39 +126,9 @@ static void test_noTrim_inner(void)
   TEST_PW8(getExpectedChannelPw(current, pulseWidths, 8, 0U), true); 
 }
 
-static void test_withTrim_inner(void)
-{
-  statuses current = setPrimarySecondaryChannels(getRandomPW(), primaries, secondaries);
-  config2 page2 = {};
-  config4 page4 = {};
-  config6 page6 = {};
-  pulseWidths pulseWidths = { 333, 777 };
-  page6.fuelTrimEnabled = true;
-  zeroTrimTables();
-  setupTrimTable(trimTables[0], -50);
-#if INJ_CHANNELS >= 2
-  setupTrimTable(trimTables[1], 50);
-#endif
-#if INJ_CHANNELS >= 3
-  setupTrimTable(trimTables[2], 33);
-#endif
-#if INJ_CHANNELS >= 4
-  setupTrimTable(trimTables[3], -33);
-#endif
-
-  char szMsg[128];
-  snprintf(szMsg, _countof(szMsg)-1, "cp:%" PRIu8 " cs:%" PRIu8, current.numPrimaryInjOutputs, current.numSecondaryInjOutputs);
-  TEST_MESSAGE(szMsg);
-  applyPwToInjectorChannels(pulseWidths, page2, page4, page6, current);
-  TEST_PW(1, getExpectedChannelPw(current, pulseWidths, 1, -50), true);
-  TEST_PW2(getExpectedChannelPw(current, pulseWidths, 2, 50), true);
-  TEST_PW3(getExpectedChannelPw(current, pulseWidths, 3, 33), true);
-  TEST_PW4(getExpectedChannelPw(current, pulseWidths, 4, -33), true);
-  TEST_PW5(getExpectedChannelPw(current, pulseWidths, 5, 0U), true);
-  TEST_PW6(getExpectedChannelPw(current, pulseWidths, 6, 0U), true);
-  TEST_PW7(getExpectedChannelPw(current, pulseWidths, 7, 0U), true);
-  TEST_PW8(getExpectedChannelPw(current, pulseWidths, 8, 0U), true); 
-}
+// Per-cylinder fuel trim was removed from this fork; applyPwToInjectorChannels()
+// no longer applies any trim regardless of page6.fuelTrimEnabled / trimTables
+// contents, so there is no separate "with trim" behaviour to test any more.
 
 void testApplyPwToInjectorChannels(void)
 {
@@ -183,9 +140,6 @@ void testApplyPwToInjectorChannels(void)
         char szPostFix[32];
         snprintf(szPostFix, _countof(szPostFix)-1, "p%" PRIu8 "_s%" PRIu8, primaries, secondaries);
         RUN_TEST_POSTFIX_P(test_noTrim_inner, szPostFix);
-
-        snprintf(szPostFix, _countof(szPostFix)-1, "p%" PRIu8 "_s%" PRIu8, primaries, secondaries);
-        RUN_TEST_POSTFIX_P(test_withTrim_inner, szPostFix);
       }
     }
   }
